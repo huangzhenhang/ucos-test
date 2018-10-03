@@ -314,7 +314,7 @@ void touch_task(void *pdata)
 void main_task(void *pdata)
 {				
 	while(1){
-		//LCD_ShowHomePic(); 
+		LCD_ShowHomePic(); 
 		POINT_COLOR=RED;
 		Show_Str(20,20,120,16,"视频播放器",16,1);		
 		Show_Str(135,20,120,16,"文件查看器",16,1);	
