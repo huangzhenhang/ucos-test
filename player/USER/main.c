@@ -321,6 +321,7 @@ void main_task(void *pdata)
 		while(1)
 		{
 			video_play();
+			delay_ms(200);
 		}
 	}
 	
