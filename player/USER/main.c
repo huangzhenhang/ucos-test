@@ -39,26 +39,28 @@ OS_STK START_TASK_STK[START_STK_SIZE];
 //任务函数
 void start_task(void *pdata);	
  			   
-//触摸屏任务
-//设置任务优先级
-#define TOUCH_TASK_PRIO       		 	7
-//设置任务堆栈大小
-#define TOUCH_STK_SIZE  				128
-//任务堆栈	
-OS_STK TOUCH_TASK_STK[TOUCH_STK_SIZE];
-//任务函数
-void touch_task(void *pdata);
 
 
-//LED任务
+//VEDIO任务
 //设置任务优先级
-#define LED_TASK_PRIO       			6 
+#define VEDIO_TASK_PRIO       			6 
 //设置任务堆栈大小
-#define LED_STK_SIZE  		    		64
+#define VEDIO_STK_SIZE  		    		512
 //任务堆栈	
-OS_STK LED_TASK_STK[LED_STK_SIZE];
+OS_STK VEDIO_TASK_STK[VEDIO_STK_SIZE];
 //任务函数
-void led_task(void *pdata);
+void vedio_task(void *pdata);
+
+
+//FILE任务
+//设置任务优先级
+#define FILE_TASK_PRIO       			6 
+//设置任务堆栈大小
+#define FILE_STK_SIZE  		    		64
+//任务堆栈	
+OS_STK FILE_TASK_STK[FILE_STK_SIZE];
+//任务函数
+void file_task(void *pdata);
 
 
 
@@ -66,21 +68,13 @@ void led_task(void *pdata);
 //设置任务优先级
 #define MAIN_TASK_PRIO       			4 
 //设置任务堆栈大小
-#define MAIN_STK_SIZE  					512
+#define MAIN_STK_SIZE  					128
 //任务堆栈	
 OS_STK MAIN_TASK_STK[MAIN_STK_SIZE];
 //任务函数
 void main_task(void *pdata);
 
-//按键扫描任务
-//设置任务优先级
-#define KEY_TASK_PRIO       			3 
-//设置任务堆栈大小
-#define KEY_STK_SIZE  					64
-//任务堆栈	
-OS_STK KEY_TASK_STK[KEY_STK_SIZE];
-//任务函数
-void key_task(void *pdata);
+
 //////////////////////////////////////////////////////////////////////////////
 OS_EVENT * msg_key;			//按键邮箱事件块指针	 	  
 //加载主界面   
@@ -258,118 +252,75 @@ void start_task(void *pdata)
  //	OSTaskCreate(touch_task,(void *)0,(OS_STK*)&TOUCH_TASK_STK[TOUCH_STK_SIZE-1],TOUCH_TASK_PRIO);	 				   
  //	OSTaskCreate(led_task,(void *)0,(OS_STK*)&LED_TASK_STK[LED_STK_SIZE-1],LED_TASK_PRIO);						    				   
  	OSTaskCreate(main_task,(void *)0,(OS_STK*)&MAIN_TASK_STK[MAIN_STK_SIZE-1],MAIN_TASK_PRIO);	 				   
- //	OSTaskCreate(key_task,(void *)0,(OS_STK*)&KEY_TASK_STK[KEY_STK_SIZE-1],KEY_TASK_PRIO);	 				   
  	OSTaskSuspend(START_TASK_PRIO);	//挂起起始任务.
 	OS_EXIT_CRITICAL();				//退出临界区(可以被中断打断)
 }	  
 //LED任务
-void led_task(void *pdata)
+void vedio_task(void *pdata)
 {
-	u8 t;
-	while(1)
-	{
-		t++;
-		delay_ms(10);
-		if(t==8)LED0=1;	//LED0灭
-		if(t==100)		//LED0亮
-		{
-			t=0;
-			LED0=0;
-		}
-	}									 
+	OS_CPU_SR cpu_sr=0;
+	while(1){
+		video_play();
+		OS_ENTER_CRITICAL();			//进入临界区(无法被中断打断)    
+	  OSTaskResume(MAIN_TASK_PRIO);
+		OSTaskDel(VEDIO_TASK_PRIO);
+		OS_EXIT_CRITICAL();				//退出临界区(可以被中断打断)
+//		delay_ms(1);
+	}
+}	   
+//文件任务
+void file_task(void *pdata)
+{
+	OS_CPU_SR cpu_sr=0;
+	while(1){
+		file_manage();
+		OS_ENTER_CRITICAL();			//进入临界区(无法被中断打断)    
+	  OSTaskResume(MAIN_TASK_PRIO);
+		OSTaskDel(VEDIO_TASK_PRIO);
+		OS_EXIT_CRITICAL();				//退出临界区(可以被中断打断)
+//		delay_ms(1);
+	}
 }	   
 
 
-//触摸屏任务
-void touch_task(void *pdata)
-{	  	
-	u32 cpu_sr;
- 	u16 lastpos[2];		//最后一次的数据 
-	while(1)
-	{
-		tp_dev.scan(0); 		 
-		if(tp_dev.sta&TP_PRES_DOWN)		//触摸屏被按下
-		{	
-		 	if(tp_dev.x[0]<lcddev.width&&tp_dev.y[0]<lcddev.height&&tp_dev.y[0]>120)
-			{			
-				if(lastpos[0]==0XFFFF)
-				{
-					lastpos[0]=tp_dev.x[0];
-					lastpos[1]=tp_dev.y[0]; 
-				}
-				OS_ENTER_CRITICAL();//进入临界段,防止其他任务,打断LCD操作,导致液晶乱序.
-				lcd_draw_bline(lastpos[0],lastpos[1],tp_dev.x[0],tp_dev.y[0],2,RED);//画线
-				OS_EXIT_CRITICAL();
-				lastpos[0]=tp_dev.x[0];
-				lastpos[1]=tp_dev.y[0];     
-			}
-		}else 
-		{
-			lastpos[0]=0XFFFF;
-			delay_ms(10);	//没有按键按下的时候
-		}
-	}
-}
+
+
 //主任务
 void main_task(void *pdata)
 {				
+	OS_CPU_SR cpu_sr=0;
 	while(1){
 		LCD_ShowHomePic(); 
 		POINT_COLOR=RED;
-		Show_Str(20,20,120,16,"视频播放器",16,1);		
+		Show_Str(20,20,120,16,"视频播放器",16,1);	
 		Show_Str(135,20,120,16,"文件查看器",16,1);	
 		while(1)
 		{
-			video_play();
+			if(TP_Scan(0))//
+			{
+				if(tp_dev.x[0]>20 && tp_dev.x[0]<70 && tp_dev.y[0]>40 && tp_dev.y[0]<100)
+				{
+						POINT_COLOR=BLUE;
+						Show_Str(20,20,120,16,"视频播放器",16,1);	
+						delay_ms(300);
+						OS_ENTER_CRITICAL();			//进入临界区(无法被中断打断)    
+					 	OSTaskCreate(vedio_task,(void *)0,(OS_STK*)&VEDIO_TASK_STK[VEDIO_STK_SIZE-1],VEDIO_TASK_PRIO);						    				   
+						OSTaskSuspend(MAIN_TASK_PRIO);	//挂起起始任务.
+						OS_EXIT_CRITICAL();				//退出临界区(可以被中断打断)
+						break;
+				}else if(tp_dev.x[0]>135 && tp_dev.x[0]<220 && tp_dev.y[0]>40 && tp_dev.y[0]<70)
+				{
+						POINT_COLOR=BLUE;
+						Show_Str(135,20,120,16,"文件查看器",16,1);	
+						delay_ms(300);
+						OS_ENTER_CRITICAL();			//进入临界区(无法被中断打断)    
+					 	OSTaskCreate(file_task,(void *)0,(OS_STK*)&FILE_TASK_STK[FILE_STK_SIZE-1],FILE_TASK_PRIO);						    				   
+						OSTaskSuspend(MAIN_TASK_PRIO);	//挂起起始任务.
+						OS_EXIT_CRITICAL();				//退出临界区(可以被中断打断)
+						break;
+				}
+			}
+			delay_ms(1);
 		}
-	}
-	
-//	u32 key
-//	u8 err;	
-//	u8 semmask=0;
-//	u8 tcnt=0;						 
-//	while(1)
-//	{
-//		key=(u32)OSMboxPend(msg_key,10,&err);   
-//		switch(key)
-//		{
-//			case 1://控制DS1
-//				LED1=!LED1;
-//				LCD_Fill(0,121,lcddev.width,lcddev.height,WHITE);
-//				break;
-//			case 2://发送信号量
-////				semmask=1;
-//				break;
-//			case 3://清除
-//				LCD_Fill(0,121,lcddev.width,lcddev.height,WHITE);
-//				break;
-//			case 4://校准
-//				OSTaskSuspend(TOUCH_TASK_PRIO);	//挂起触摸屏任务		 
-// 				if((tp_dev.touchtype&0X80)==0)TP_Adjust();   
-// 				OSTaskResume(TOUCH_TASK_PRIO);	//解挂
-//				ucos_load_main_ui();			//重新加载主界面		 
-//				break;
-//		}
-//		if(tcnt==50)//0.5秒更新一次CPU使用率
-//		{
-//			tcnt=0;
-//			POINT_COLOR=BLUE;		  
-//			LCD_ShowxNum(192,30,OSCPUUsage,3,16,0);	//显示CPU使用率   
-//		}
-//		tcnt++;
-//		delay_ms(10);
-//	}
-} 
-//按键扫描任务
-void key_task(void *pdata)
-{	
-	u8 key;		    						 
-	while(1)
-	{
-		key=KEY_Scan(0);   
-		if(key)OSMboxPost(msg_key,(void*)key);//发送消息
- 		delay_ms(10);
-	}
+	} 
 }
-
-
