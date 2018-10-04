@@ -22,7 +22,7 @@
 
 
 void video_play(void);
-u8 video_play_mjpeg(u8 *pname); 
+u8 video_play_mjpeg(u8 *pname, u8 *fn, u16 index, u16 total); 
 void video_time_show(FIL *favi,AVI_INFO *aviinfo);
 void video_info_show(AVI_INFO *aviinfo);
 void video_bmsg_show(u8* name,u16 index,u16 total);
