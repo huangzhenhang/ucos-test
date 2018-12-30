@@ -109,7 +109,7 @@ int main(void)
 	KEY_Init(); 				//按键初始化  
  	LCD_Init();					//LCD初始化 
 	tp_dev.init();				//触摸屏初始化
-	
+	//Init mem_tools
 	my_mem_init(SRAMIN);		//初始化内部内存池 
 	my_mem_init(SRAMCCM);		//初始化CCM内存池 
 	exfuns_init();			//为fatfs相关变量申请内存  
